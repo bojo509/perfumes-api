@@ -8,16 +8,29 @@ const port = process.env.PORT || 3000
 const { Pool } = pg;
 
 dotenv.config()
+app.use(express.json())
 
-const pool = new Pool({
-    connectionString: process.env.POSTGRES_URL
-})
+let pool;
 
-pool.connect((error) => {
-    if (error) {
-        console.log(error)
-    }
-})
+const createPool = () => {
+    pool = new Pool({
+        connectionString: process.env.POSTGRES_URL,
+        max: 20,
+        idleTimeoutMillis: 3000000,
+    });
+
+    pool.on('error', (err) => {
+        console.error('Unexpected error on idle client', err);
+        reconnect();
+    });
+};
+
+const reconnect = () => {
+    console.log('Attempting to reconnect to the database...');
+    createPool();
+};
+
+createPool();
 
 app.get('/static-links', (req, res) => {
     res.json([
@@ -28,10 +41,47 @@ app.get('/static-links', (req, res) => {
 
 app.get('/', async (req, res) => {
     try {
-        const { rows } = await sql`SELECT link, title FROM links`; // Log the result of the query
+        const { rows } = await sql`SELECT link, title FROM links`;
         res.json(rows);
     } catch (error) {
-        console.error('Error fetching links:', error); // Log any errors
+        console.error('Error fetching links:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
+app.post('/create-a-record', async (req, res) => {
+    const { title, link, authKey } = req.body;
+    try {
+        if (authKey === process.env.AUTH_KEY) {
+            await sql`INSERT INTO links (title, link) VALUES (${title}, ${link})`;
+            res.status(201).json({ message: `Record created with title: ${title} and link: ${link}` });
+        }
+        else {
+            res.status(401).json({ error: 'Unauthorized' });
+        }
+    } catch (error) {
+        console.error('Error inserting record:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
+app.post('/delete-a-record', async (req, res) => {
+    const { title, link, authKey } = req.body;
+    try {
+        if (authKey === process.env.AUTH_KEY) {
+            const { rows } = await sql`SELECT * FROM links WHERE title = ${title} OR link = ${link}`;
+            // Check if any rows were affected
+            if (rows.length > 0) {
+                await sql`DELETE FROM links WHERE title = ${title} OR link = ${link}`;
+                res.status(200).json({ message: `Record deleted successfully` });
+            } else {
+                res.status(404).json({ error: 'Record not found' });
+            }
+        } else {
+            res.status(401).json({ error: 'Unauthorized' });
+        }
+    } catch (error) {
+        console.error('Error deleting record:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 })
