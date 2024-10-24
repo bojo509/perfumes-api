@@ -86,6 +86,27 @@ app.post('/delete-a-record', async (req, res) => {
     }
 })
 
+app.post('/delete-by-keyword', async (req, res) => {
+    const { title, authKey } = req.body;
+    try {
+        if (authKey === process.env.AUTH_KEY) {
+            const { rows } = await sql`SELECT * FROM links WHERE title LIKE ${`%${title}%`}`;
+            // Check if any rows were affected
+            if (rows.length > 0) {
+                await sql`DELETE FROM links WHERE title LIKE ${`%${title}%`}`;
+                res.status(200).json({ message: `Records deleted successfully`, count: rows.length });
+            } else {
+                res.status(404).json({ error: 'No matching records found' });
+            }
+        } else {
+            res.status(401).json({ error: 'Unauthorized' });
+        }
+    } catch (error) {
+        console.error('Error deleting records:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
 app.listen(port, () => {
     console.log(`Server is running on localhost:${port}`)
 })
