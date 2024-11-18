@@ -49,7 +49,7 @@ app.get('/', async (req, res) => {
     }
 })
 
-app.get('health-check', (req, res) => {
+app.get('/health-check', (req, res) => {
     try {
         res.status(200).json({ message: 'OK' });
     } catch (error) {
