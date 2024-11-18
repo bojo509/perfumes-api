@@ -49,6 +49,14 @@ app.get('/', async (req, res) => {
     }
 })
 
+app.get('health-check', (req, res) => {
+    try {
+        res.status(200).json({ message: 'OK' });
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
 app.post('/create-a-record', async (req, res) => {
     const { title, link, authKey } = req.body;
     try {
