@@ -42,7 +42,7 @@ app.get('/static-links', (req, res) => {
 app.get('/', async (req, res) => {
     try {
         const { rows } = await sql`SELECT link, title FROM links`;
-        res.json(rows);
+        res.status(200).json(rows);
     } catch (error) {
         console.error('Error fetching links:', error);
         res.status(500).json({ error: 'Internal Server Error' });
