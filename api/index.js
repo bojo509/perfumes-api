@@ -74,7 +74,7 @@ const reconnect = () => {
 createPool();
 
 app.get('/shortidendpoint', (req, res) => {
-    return res.json(process.env.SHORTID_URL);
+    return res.json({ url: process.env.SHORTID_URL });
 })
 
 app.get('/', async (req, res) => {
