@@ -32,11 +32,8 @@ const reconnect = () => {
 
 createPool();
 
-app.get('/static-links', (req, res) => {
-    res.json([
-        { "link": "https://parfium.bg/mont-blanc-legend-blue-parfyumna-voda-za-mazhe-bez-opakovka-edp", "title": "montblanc legend blue without box" },
-        { "link": "https://parfium.bg/mont-blanc-legend-blue-parfyumna-voda-za-mazhe-edp", "title": "montblanc legend blue" }
-    ])
+app.get('/shortidendpoint', (req, res) => {
+    res.json(process.env.SHORTID_URL);
 })
 
 app.get('/', async (req, res) => {
