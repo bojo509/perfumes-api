@@ -7,6 +7,47 @@ const app = express()
 const port = process.env.PORT || 3000
 const { Pool } = pg;
 
+const postData = async (method, url, link) => {
+    try {
+        const response = await fetch(process.env.SHORTID_URL + 'api/create', {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ apiKey: process.env.API_KEY, url: link }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.error}`);
+        }
+
+        const result = await response.json();
+        return result.shortUrl[0].shortid;
+    } catch (error) {
+        console.error('Error:', error);
+    }
+};
+
+const deleteRecord = async (shortid) => {
+    try {
+        const response = await fetch(process.env.SHORTID_URL + "api/delete", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ apiKey: process.env.API_KEY, shortid }),
+        });
+
+        if (!response.ok) {
+            const errorMessage = await response.text();
+            console.error(`Delete request failed with status: ${response.status}, message: ${errorMessage}`);
+            throw new Error(`${response.status}, message: ${errorMessage}`);
+        }
+    } catch (error) {
+        console.error('Error in deleteRecord:', error);
+    }
+}
+
 dotenv.config()
 app.use(express.json())
 
@@ -38,7 +79,7 @@ app.get('/shortidendpoint', (req, res) => {
 
 app.get('/', async (req, res) => {
     try {
-        const { rows } = await sql`SELECT link, title FROM links`;
+        const { rows } = await sql`SELECT link, title, shortid FROM links`;
         res.status(200).json(rows);
     } catch (error) {
         console.error('Error fetching links:', error);
@@ -58,7 +99,8 @@ app.post('/create-a-record', async (req, res) => {
     const { title, link, authKey } = req.body;
     try {
         if (authKey === process.env.AUTH_KEY) {
-            await sql`INSERT INTO links (title, link) VALUES (${title}, ${link})`;
+            const shortid = await postData('POST', process.env.SHORTID_URL + "/api/create", link);
+            await sql`INSERT INTO links (title, link, shortid) VALUES (${title}, ${link}, ${shortid})`;
             res.status(201).json({ message: `Record created with title: ${title} and link: ${link}` });
         }
         else {
@@ -75,8 +117,9 @@ app.post('/delete-a-record', async (req, res) => {
     try {
         if (authKey === process.env.AUTH_KEY) {
             const { rows } = await sql`SELECT * FROM links WHERE title = ${title} OR link = ${link}`;
-            // Check if any rows were affected
             if (rows.length > 0) {
+                const shortid = rows[0].shortid;
+                await deleteRecord(shortid)
                 await sql`DELETE FROM links WHERE title = ${title} OR link = ${link}`;
                 res.status(200).json({ message: `Record deleted successfully` });
             } else {
@@ -96,7 +139,6 @@ app.post('/delete-by-keyword', async (req, res) => {
     try {
         if (authKey === process.env.AUTH_KEY) {
             const { rows } = await sql`SELECT * FROM links WHERE title LIKE ${`%${title}%`}`;
-            // Check if any rows were affected
             if (rows.length > 0) {
                 await sql`DELETE FROM links WHERE title LIKE ${`%${title}%`}`;
                 res.status(200).json({ message: `Records deleted successfully`, count: rows.length });
