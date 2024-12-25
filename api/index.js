@@ -7,7 +7,7 @@ const app = express()
 const port = process.env.PORT || 3000
 const { Pool } = pg;
 
-const postData = async (method, url, link) => {
+const postData = async (method, link) => {
     try {
         const response = await fetch(process.env.SHORTID_URL + 'api/create', {
             method: method,
@@ -80,40 +80,72 @@ app.get('/shortidendpoint', (req, res) => {
 app.get('/', async (req, res) => {
     try {
         const { rows } = await sql`SELECT link, title, shortid FROM links`;
-        res.status(200).json(rows);
+        return res.status(200).json(rows);
     } catch (error) {
         console.error('Error fetching links:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
+app.get('/venera', async (req, res) => {
+    try {
+        const { rows } = await sql`SELECT link, title, shortid FROM venera`;
+        return res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error fetching links:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
     }
 })
 
 app.get('/health-check', (req, res) => {
     try {
-        res.status(200).json({ message: 'OK' });
+        return res.status(200).json({ message: 'OK' });
     } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
+        return res.status(500).json({ error: 'Internal Server Error' });
     }
 })
 
 app.post('/create-a-record', async (req, res) => {
-    const { title, link, authKey } = req.body;
+    const { title, link, table, authKey } = req.body;
     try {
+        if (!table) {
+            return res.status(400).json({ error: 'Error' });
+        }
+
         if (authKey === process.env.AUTH_KEY) {
-            const shortid = await postData('POST', process.env.SHORTID_URL + "/api/create", link);
+            const shortid = await postData('POST', link);
             await sql`INSERT INTO links (title, link, shortid) VALUES (${title}, ${link}, ${shortid})`;
-            res.status(201).json({ message: `Record created with title: ${title} and link: ${link}` });
+            return res.status(201).json({ message: `Record created with title: ${title} and link: ${link}` });
         }
         else {
-            res.status(401).json({ error: 'Unauthorized' });
+            return res.status(401).json({ error: 'Unauthorized' });
         }
     } catch (error) {
         console.error('Error inserting record:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
+app.post('/venera/create-a-record', async (req, res) => {
+    const { title, link, authKey } = req.body;
+    try {
+        if (authKey === process.env.AUTH_KEY) {
+            const shortid = await postData('POST', link);
+            await sql`INSERT INTO venera (title, link, shortid) VALUES (${title}, ${link}, ${shortid})`;
+            return res.status(201).json({ message: `Record created with title: ${title} and link: ${link}` });
+        }
+        else {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+    } catch (error) {
+        console.error('Error inserting record:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
     }
 })
 
 app.post('/delete-a-record', async (req, res) => {
     const { title, link, authKey } = req.body;
+
     try {
         if (authKey === process.env.AUTH_KEY) {
             const { rows } = await sql`SELECT * FROM links WHERE title = ${title} OR link = ${link}`;
@@ -121,16 +153,39 @@ app.post('/delete-a-record', async (req, res) => {
                 const shortid = rows[0].shortid;
                 await deleteRecord(shortid)
                 await sql`DELETE FROM links WHERE title = ${title} OR link = ${link}`;
-                res.status(200).json({ message: `Record deleted successfully` });
+                return res.status(200).json({ message: `Record deleted successfully` });
             } else {
-                res.status(404).json({ error: 'Record not found' });
+                return res.status(404).json({ error: 'Record not found' });
             }
         } else {
-            res.status(401).json({ error: 'Unauthorized' });
+            return res.status(401).json({ error: 'Unauthorized' });
         }
     } catch (error) {
         console.error('Error deleting record:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
+app.post('/venera/delete-a-record', async (req, res) => {
+    const { title, link, authKey } = req.body;
+
+    try {
+        if (authKey === process.env.AUTH_KEY) {
+            const { rows } = await sql`SELECT * FROM venera WHERE title = ${title} OR link = ${link}`;
+            if (rows.length > 0) {
+                const shortid = rows[0].shortid;
+                await deleteRecord(shortid)
+                await sql`DELETE FROM venera WHERE title = ${title} OR link = ${link}`;
+                return res.status(200).json({ message: `Record deleted successfully` });
+            } else {
+                return res.status(404).json({ error: 'Record not found' });
+            }
+        } else {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+    } catch (error) {
+        console.error('Error deleting record:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
     }
 })
 
@@ -141,16 +196,16 @@ app.post('/delete-by-keyword', async (req, res) => {
             const { rows } = await sql`SELECT * FROM links WHERE title LIKE ${`%${title}%`}`;
             if (rows.length > 0) {
                 await sql`DELETE FROM links WHERE title LIKE ${`%${title}%`}`;
-                res.status(200).json({ message: `Records deleted successfully`, count: rows.length });
+                return res.status(200).json({ message: `Records deleted successfully`, count: rows.length });
             } else {
-                res.status(404).json({ error: 'No matching records found' });
+                return res.status(404).json({ error: 'No matching records found' });
             }
         } else {
-            res.status(401).json({ error: 'Unauthorized' });
+            return res.status(401).json({ error: 'Unauthorized' });
         }
     } catch (error) {
         console.error('Error deleting records:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return res.status(500).json({ error: 'Internal Server Error' });
     }
 })
 
