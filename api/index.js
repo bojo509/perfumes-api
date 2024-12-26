@@ -9,7 +9,7 @@ const { Pool } = pg;
 
 const postData = async (method, link) => {
     try {
-        const response = await fetch(process.env.SHORTID_URL + 'api/create', {
+        const response = await fetch(process.env.SHORTENER_URL + 'api/create', {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
@@ -30,7 +30,7 @@ const postData = async (method, link) => {
 
 const deleteRecord = async (shortid) => {
     try {
-        const response = await fetch(process.env.SHORTID_URL + "api/delete", {
+        const response = await fetch(process.env.SHORTENER_URL + "api/delete", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
