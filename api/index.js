@@ -106,12 +106,8 @@ app.get('/health-check', (req, res) => {
 })
 
 app.post('/create-a-record', async (req, res) => {
-    const { title, link, table, authKey } = req.body;
+    const { title, link, authKey } = req.body;
     try {
-        if (!table) {
-            return res.status(400).json({ error: 'Error' });
-        }
-
         if (authKey === process.env.AUTH_KEY) {
             const shortid = await postData('POST', link);
             await sql`INSERT INTO links (title, link, shortid) VALUES (${title}, ${link}, ${shortid})`;
