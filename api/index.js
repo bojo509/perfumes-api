@@ -77,6 +77,14 @@ app.get('/shortidendpoint', (req, res) => {
     return res.json({ url: process.env.SHORTID_URL });
 })
 
+app.get('/webhook', (req, res) => {
+    return res.json({ url: process.env.WEBHOOK_URL });
+})
+
+app.get('/venera/webhook', (req, res) => {
+    return res.json({ url: process.env.VENERA_WEBHOOK_URL });
+})
+
 app.get('/', async (req, res) => {
     try {
         const { rows } = await sql`SELECT link, title, shortid FROM links`;
